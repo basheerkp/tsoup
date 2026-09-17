@@ -1,9 +1,8 @@
 package com.ahmed.tsoup
 
 import android.content.Context
-import android.content.SharedPreferences
-import android.os.Looper
-import android.preference.PreferenceManager
+import android.util.Log
+import androidx.annotation.Keep
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.lifecycle.ViewModel
@@ -15,16 +14,13 @@ import com.ahmed.tsoup.scrapers.getKnaben
 import com.ahmed.tsoup.scrapers.getTorrentGalaxy
 import com.ahmed.tsoup.scrapers.getTorrentQuest
 import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
-import java.text.BreakIterator
-import java.util.prefs.Preferences
-import java.util.stream.Collector
-import kotlin.contracts.Returns
+import kotlin.time.Duration.Companion.milliseconds
 
 data class TorrentVM(
     var title: String,
@@ -37,55 +33,58 @@ data class TorrentVM(
 )
 
 
+@Keep
 class TorrentItems : ViewModel() {
     private val _torrentItems = mutableStateListOf<TorrentVM>()
     val torrentItems: SnapshotStateList<TorrentVM> = _torrentItems
 
-    suspend fun loadItems(domains: List<String>, query: String, context: Context) {
-        val sorter = context.getSharedPreferences("app_preferences", Context.MODE_PRIVATE)
-            .getString("sorter", "seeds")
-        val comparator = if (sorter == "Sizeasc") compareBy<TorrentVM> {
-            println(sorter)
-            it.size
-        }
-        else compareByDescending<TorrentVM> {
-            println(sorter)
-            when (sorter) {
-                "Seeds" -> it.seeds
-                "Leeches" -> it.leeches
-                "Sizedesc" -> it.size
-                else -> it.seeds
+    fun loadItems(domains: List<String>, query: String, context: Context) {
+        viewModelScope.launch {
+            val sorter = context.getSharedPreferences("app_preferences", Context.MODE_PRIVATE)
+                .getString("sorter", "seeds")
+            val comparator = if (sorter == "Sizeasc") compareBy<TorrentVM> {
+                println(sorter)
+                it.size
             }
-        }
-        coroutineScope {
-            val results = formatURL(domains, query)
+            else compareByDescending<TorrentVM> {
+                println(sorter)
+                when (sorter) {
+                    "Seeds" -> it.seeds
+                    "Leeches" -> it.leeches
+                    "Sizedesc" -> it.size
+                    else -> it.seeds
+                }
+            }
+            coroutineScope {
+                val results = formatURL(domains, query)
 
-            domains.map { domain ->
-                async {
-                    when (domain) {
-                        "https://1337x.to" -> processDomain(
-                            results[domains.indexOf(domain)], ::get1337x, comparator
-                        )
+                domains.forEach { domain ->
+                    async {
+                        when (domain) {
+                            "https://1337x.to" -> processDomain(
+                                results[domains.indexOf(domain)], ::get1337x, comparator
+                            )
 
-                        "https://bitsearch.to" -> processDomain(
-                            results[domains.indexOf(domain)], ::getBitSearch, comparator
-                        )
+                            "https://bitsearch.to" -> processDomain(
+                                results[domains.indexOf(domain)], ::getBitSearch, comparator
+                            )
 
-                        "https://cloudtorrents.com" -> processDomain(
-                            results[domains.indexOf(domain)], ::getCloudTorrents, comparator
-                        )
+                            "https://cloudtorrents.com" -> processDomain(
+                                results[domains.indexOf(domain)], ::getCloudTorrents, comparator
+                            )
 
-                        "https://knaben.eu" -> processDomain(
-                            results[domains.indexOf(domain)], ::getKnaben, comparator
-                        )
+                            "https://knaben.eu" -> processDomain(
+                                results[domains.indexOf(domain)], ::getKnaben, comparator
+                            )
 
-                        "https://torrentgalaxy.to" -> processDomain(
-                            results[domains.indexOf(domain)], ::getTorrentGalaxy, comparator
-                        )
+                            "https://torrentgalaxy.to" -> processDomain(
+                                results[domains.indexOf(domain)], ::getTorrentGalaxy, comparator
+                            )
 
-                        "https://torrentquest.com" -> processDomain(
-                            results[domains.indexOf(domain)], ::getTorrentQuest, comparator
-                        )
+                            "https://torrentquest.com" -> processDomain(
+                                results[domains.indexOf(domain)], ::getTorrentQuest, comparator
+                            )
+                        }
                     }
                 }
             }
@@ -94,11 +93,12 @@ class TorrentItems : ViewModel() {
 
     private suspend fun processDomain(
         urls: List<String>,
-        collector: suspend (String) -> Flow<TorrentVM>,
+        collector: (String) -> Flow<TorrentVM>,
         comparator: Comparator<TorrentVM>
     ) {
         var exit = false
         for (url in urls) {
+            delay(1500L.milliseconds)
             collector(url).onEach { item ->
                 if (item.title == "None" && _torrentItems.isNotEmpty()) {
                     exit = true
@@ -109,6 +109,7 @@ class TorrentItems : ViewModel() {
                 )
             }.launchIn(viewModelScope)
             if (exit) break
+        Log.d("TorrentItems", "processDomain: $_torrentItems")
         }
         return
     }

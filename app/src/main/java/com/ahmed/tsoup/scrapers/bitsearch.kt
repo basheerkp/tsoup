@@ -12,11 +12,13 @@ import org.jsoup.nodes.Document
 
 fun getBitSearch(url: String): Flow<TorrentVM> = flow {
     try {
-        val doc: Document = Jsoup.connect(url).userAgent("Mozilla/5.0").timeout(5000).get()
+        val doc: Document = Jsoup.connect(url)
+            .userAgent("Mozilla/5.0 (Linux; Android 11; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36")
+            .timeout(10000).get()
 
         println(url)
 
-        var links = doc.select("li")
+        val links = doc.select("li")
 
         if (doc.select("li").isEmpty() && doc.text().isNotEmpty()) emit(
             TorrentVM(
@@ -34,9 +36,11 @@ fun getBitSearch(url: String): Flow<TorrentVM> = flow {
 
             val currentItem = TorrentVM(
                 title = link.select("h5").text(),
-                size = sizeFormatter(stats.select("div:has(img[alt=Size])").text().split(" ")
-                    .getOrNull(1) + stats.select("div:has(img[alt=Size])").text().split(" ")
-                    .getOrNull(2)),
+                size = sizeFormatter(
+                    stats.select("div:has(img[alt=Size])").text().split(" ")
+                        .getOrNull(1) + stats.select("div:has(img[alt=Size])").text().split(" ")
+                        .getOrNull(2)
+                ),
                 seeds = 0,
                 leeches = 0,
                 uploader = "BitSearch",

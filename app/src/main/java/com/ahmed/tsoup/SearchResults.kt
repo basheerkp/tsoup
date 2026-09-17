@@ -39,6 +39,7 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.Dp
@@ -61,8 +62,8 @@ class SearchResults : ComponentActivity() {
                     val domain = "https://cloudtorrents.com"
 
                     val config = LocalConfiguration.current
-                    val width = config.screenWidthDp
-                    val height = config.screenHeightDp
+                    val width = LocalWindowInfo.current.containerSize.width
+                    val height = LocalWindowInfo.current.containerSize.height
                     Column {
                         Results(
                             modifier = Modifier.padding(innerPadding),

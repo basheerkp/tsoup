@@ -15,7 +15,7 @@ fun get1337x(url: String): Flow<TorrentVM> = flow {
     try {
         println(url)
         val doc: Document = Jsoup.connect(url).userAgent("Mozilla/5.0").timeout(5000).get()
-        var links = doc.select("a[href^=/torrent]")
+        val links = doc.select("a[href^=/torrent]")
         println("running scraper")
         if (doc.select("td").isEmpty() && doc.text().isNotEmpty()) emit(
             TorrentVM(

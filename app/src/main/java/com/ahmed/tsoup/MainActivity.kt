@@ -85,8 +85,7 @@ class MainActivity : ComponentActivity() {
                             Modifier.fillMaxWidth(),
                         ) {
                             SearchBar(
-                                modifier = Modifier.padding(innerPadding),
-                                url = if (urlOld == null) "" else urlOld
+                                modifier = Modifier.padding(innerPadding), url = urlOld ?: ""
                             )
                         }
                         Spacer(Modifier.weight(1f))
@@ -101,7 +100,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun SearchBar(modifier: Modifier = Modifier, url: String) {
     val context = LocalContext.current
-    var url = remember { mutableStateOf(url) }
+    val  url = remember { mutableStateOf(url) }
     Column(
         modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.Center,
@@ -119,12 +118,12 @@ fun SearchBar(modifier: Modifier = Modifier, url: String) {
                 onClick = {
                     val intent = Intent(context, SearchResults::class.java)
                     intent.putExtra("url", url.value)
-                    startActivity(context, intent, null)
+                    context.startActivity(intent, null)
                 },
                 Modifier
                     .background(shape = MaterialTheme.shapes.extraLarge, color = Color.Gray)
                     .defaultMinSize(155.dp, 45.dp),
-                enabled = url.value.length > 2
+                enabled = url.value.length >= 2
             ) { Text("Search") }
         }
         Spacer(Modifier.height(32.dp))
