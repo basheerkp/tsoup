@@ -20,6 +20,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlin.time.Duration.Companion.milliseconds
 
 data class TorrentVM(
@@ -32,57 +34,43 @@ data class TorrentVM(
     var date: String
 )
 
-
 @Keep
 class TorrentItems : ViewModel() {
     private val _torrentItems = mutableStateListOf<TorrentVM>()
     val torrentItems: SnapshotStateList<TorrentVM> = _torrentItems
 
+    // Hardcoded comparator to sort by seeds descending
+
     fun loadItems(domains: List<String>, query: String, context: Context) {
         viewModelScope.launch {
-            val sorter = context.getSharedPreferences("app_preferences", Context.MODE_PRIVATE)
-                .getString("sorter", "seeds")
-            val comparator = if (sorter == "Sizeasc") compareBy<TorrentVM> {
-                println(sorter)
-                it.size
-            }
-            else compareByDescending<TorrentVM> {
-                println(sorter)
-                when (sorter) {
-                    "Seeds" -> it.seeds
-                    "Leeches" -> it.leeches
-                    "Sizedesc" -> it.size
-                    else -> it.seeds
-                }
-            }
             coroutineScope {
                 val results = formatURL(domains, query)
 
-                domains.forEach { domain ->
+                domains.forEachIndexed { index, domain ->
                     async {
                         when (domain) {
                             "https://1337x.to" -> processDomain(
-                                results[domains.indexOf(domain)], ::get1337x, comparator
+                                results[index], ::get1337x,
                             )
 
-                            "https://bitsearch.to" -> processDomain(
-                                results[domains.indexOf(domain)], ::getBitSearch, comparator
+                            "https://bitsearch.eu" -> processDomain(
+                                results[index], ::getBitSearch,
                             )
 
                             "https://cloudtorrents.com" -> processDomain(
-                                results[domains.indexOf(domain)], ::getCloudTorrents, comparator
+                                results[index], ::getCloudTorrents,
                             )
 
                             "https://knaben.eu" -> processDomain(
-                                results[domains.indexOf(domain)], ::getKnaben, comparator
+                                results[index], ::getKnaben,
                             )
 
                             "https://torrentgalaxy.to" -> processDomain(
-                                results[domains.indexOf(domain)], ::getTorrentGalaxy, comparator
+                                results[index], ::getTorrentGalaxy,
                             )
 
                             "https://torrentquest.com" -> processDomain(
-                                results[domains.indexOf(domain)], ::getTorrentQuest, comparator
+                                results[index], ::getTorrentQuest
                             )
                         }
                     }
@@ -94,92 +82,86 @@ class TorrentItems : ViewModel() {
     private suspend fun processDomain(
         urls: List<String>,
         collector: (String) -> Flow<TorrentVM>,
-        comparator: Comparator<TorrentVM>
     ) {
         var exit = false
         for (url in urls) {
-            delay(1500L.milliseconds)
+            delay(1000L.milliseconds) // Slightly reduced delay
             collector(url).onEach { item ->
-                if (item.title == "None" && _torrentItems.isNotEmpty()) {
+                if ((item.title == "None" || item.title == "empty") && _torrentItems.isNotEmpty()) {
                     exit = true
                     return@onEach
                 }
-                if (_torrentItems.none { it.seeds == item.seeds && it.leeches == item.leeches && it.title == item.title && it.size == item.size }) addSorted(
-                    item, comparator
-                )
+
+                val isDuplicate = _torrentItems.any {
+                    it.title == item.title && it.seeds == item.seeds && it.size == item.size
+                }
+
+                if (!isDuplicate && item.title != "None" && item.title != "empty") {
+                    addSorted(item, compareByDescending { it.seeds })
+                }
             }.launchIn(viewModelScope)
+
             if (exit) break
-        Log.d("TorrentItems", "processDomain: $_torrentItems")
         }
-        return
+        Log.d("TorrentItems", "processDomain finished for one domain")
     }
 
-    fun addSorted(item: TorrentVM, comparator: Comparator<TorrentVM>) {
-        val index = _torrentItems.binarySearch(item, comparator)
-        if (index < 0) {
-            if (_torrentItems.isEmpty()) _torrentItems.add(item)
-            else _torrentItems.add(-index - 1, item)
+    private val lock = Mutex()
+
+    private suspend fun addSorted(item: TorrentVM, comparator: Comparator<TorrentVM>) {
+        lock.withLock {
+            val index = _torrentItems.binarySearch(item, comparator)
+            if (index < 0) {
+                _torrentItems.add(-index - 1, item)
+            }
         }
     }
-
 }
 
 fun formatURL(domains: List<String>, query: String): List<List<String>> {
     val result = mutableListOf<List<String>>()
+    val encodedQuery = query.replace(" ", "%20")
+    val hyphenQuery = query.replace(" ", "-")
+
     domains.forEach { domain ->
         when (domain) {
-
             "https://1337x.to" -> result.add(
                 listOf(
-                    "$domain/search/$query/1/",
-                    "$domain/search/$query/2/",
-                    "$domain/search/$query/3/",
-                    "$domain/search/$query/4/"
+                    "$domain/search/$encodedQuery/1/", "$domain/search/$encodedQuery/2/"
                 )
             )
 
             "https://torrentgalaxy.to" -> result.add(
                 listOf(
-                    "$domain/torrents.php?search=$query&sort=id&page=0&sort=seeders&order=desc",
-                    "$domain/torrents.php?search=$query&sort=id&page=1&sort=seeders&order=desc",
-                    "$domain/torrents.php?search=$query&sort=id&page=2&sort=seeders&order=desc",
-                    "$domain/torrents.php?search=$query&sort=id&page=3&sort=seeders&order=desc"
+                    "$domain/torrents.php?search=$encodedQuery&sort=seeders&order=desc&page=0",
+                    "$domain/torrents.php?search=$encodedQuery&sort=seeders&order=desc&page=1"
                 )
             )
 
             "https://torrentquest.com" -> result.add(
                 listOf(
-                    "$domain/${query[0]}/${query.replace(" ", "-")}/se/desc/1/",
-                    "$domain/${query[0]}/${query.replace(" ", "-")}/se/desc/2/",
-                    "$domain/${query[0]}/${query.replace(" ", "-")}/se/desc/3/",
-                    "$domain/${query[0]}/${query.replace(" ", "-")}/se/desc/4/"
+                    "$domain/${query.first().lowercase()}/$hyphenQuery/se/desc/1/",
+                    "$domain/${query.first().lowercase()}/$hyphenQuery/se/desc/2/"
                 )
             )
 
             "https://knaben.eu" -> result.add(
                 listOf(
-                    "$domain/search/${query.replace(" ", "%20")}/0/1/seeders",
-                    "$domain/search/${query.replace(" ", "%20")}/0/2/seeders",
-                    "$domain/search/${query.replace(" ", "%20")}/0/3/seeders",
-                    "$domain/search/${query.replace(" ", "%20")}/0/4/seeders"
+                    "$domain/search/$encodedQuery/0/1/seeders",
+                    "$domain/search/$encodedQuery/0/2/seeders"
                 )
             )
 
             "https://cloudtorrents.com" -> result.add(
                 listOf(
-                    "$domain/search?offset=0&query=$query&ordering=-se",
-                    "$domain/search?offset=50&query=$query&ordering=-se",
-                    "$domain/search?offset=100&query=$query&ordering=-se",
-                    "$domain/search?offset=150&query=$query&ordering=-se"
+                    "$domain/search?offset=0&query=$encodedQuery&ordering=-se",
+                    "$domain/search?offset=50&query=$encodedQuery&ordering=-se"
                 )
             )
 
-            "https://bitsearch.to" -> result.add(
+            "https://bitsearch.eu" -> result.add(
                 listOf(
-                    "$domain/search?q=$query&page=1&sort=seeders",
-                    "$domain/search?q=$query&page=2&sort=seeders",
-                    "$domain/search?q=$query&page=3&sort=seeders",
-                    "$domain/search?q=$query&page=4&sort=seeders"
+                    "$domain/api/v1/search?q=$encodedQuery&sort=seeders&limit=60"
                 )
             )
 
@@ -189,14 +171,18 @@ fun formatURL(domains: List<String>, query: String): List<List<String>> {
     return result
 }
 
-
 fun sizeFormatter(size: String): Float {
-    if (size.contains("G")) {
-        return size.slice(0..size.length - 4).toFloat() * 1024 * 1024
-    } else if (size.contains("M")) {
-        return size.slice(0..size.length - 4).toFloat() * 1024
-    } else if (size.contains("K")) {
-        return size.slice(0..size.length - 4).toFloat()
+    val cleanSize = size.uppercase()
+    return try {
+        when {
+            cleanSize.contains("G") -> cleanSize.substringBefore("G").trim()
+                .toFloat() * 1024 * 1024 * 1024
+
+            cleanSize.contains("M") -> cleanSize.substringBefore("M").trim().toFloat() * 1024 * 1024
+            cleanSize.contains("K") -> cleanSize.substringBefore("K").trim().toFloat() * 1024
+            else -> cleanSize.filter { it.isDigit() || it == '.' }.toFloat()
+        }
+    } catch (e: Exception) {
+        0f
     }
-    return 0f
 }

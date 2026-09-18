@@ -6,7 +6,7 @@ import com.google.gson.reflect.TypeToken
 import androidx.core.content.edit
 
 data class DomainItem(
-    val domain: String, val enabled: Boolean, val querySize: Int
+    val domain: String, val enabled: Boolean
 )
 
 fun saveAddress(addresses: List<DomainItem>, prefs: SharedPreferences) {

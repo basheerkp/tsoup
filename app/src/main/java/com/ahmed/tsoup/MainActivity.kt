@@ -6,39 +6,40 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.ui.AbsoluteAlignment
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Color.Companion.Green
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.ContextCompat.startActivity
+import androidx.core.content.edit
 import com.ahmed.tsoup.ui.theme.TSOUPTheme
+import com.ahmed.tsoup.ui.theme.TorrentGreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -48,47 +49,57 @@ class MainActivity : ComponentActivity() {
             TSOUPTheme {
                 val context = LocalContext.current
                 val prefs = context.getSharedPreferences("app_preferences", MODE_PRIVATE)
+                
+                // Initialize default domains on first run
                 if (prefs.getBoolean("first_run", true)) {
                     saveAddress(
                         listOf(
-                            DomainItem("https://1337x.to", true, 20),
-                            DomainItem("https://bitsearch.to", true, 20),
-                            DomainItem("https://cloudtorrents.com", true, 50),
-                            DomainItem("https://knaben.eu", true, 50),
-                            DomainItem("https://torrentgalaxy.to", true, 50),
-                            DomainItem("https://torrentquest.com", true, 40),
-                        ), context.getSharedPreferences("app_preferences", MODE_PRIVATE)
+                            DomainItem("https://1337x.to", true),
+                            DomainItem("https://bitsearch.eu", true),
+                            DomainItem("https://cloudtorrents.com", true),
+                            DomainItem("https://knaben.eu", true),
+                            DomainItem("https://torrentgalaxy.to", true),
+                            DomainItem("https://torrentquest.com", true),
+                        ), prefs
                     )
-                    prefs.edit().putBoolean("first_run", false).apply()
+                    prefs.edit { putBoolean("first_run", false) }
                 }
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Column(
-                        horizontalAlignment = AbsoluteAlignment.Right,
-                        modifier = Modifier.padding(innerPadding),
-                        verticalArrangement = Arrangement.SpaceEvenly
-                    ) {
-                        IconButton(
-                            onClick = {
+
+                Scaffold(
+                    modifier = Modifier.fillMaxSize(),
+                    topBar = {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 32.dp, end = 16.dp),
+                            contentAlignment = Alignment.TopEnd
+                        ) {
+                            IconButton(onClick = {
                                 val intent = Intent(context, Settings::class.java)
                                 context.startActivity(intent)
-                            }, modifier = Modifier.size(45.dp)
-                        ) {
-                            Icon(
-                                Icons.AutoMirrored.Filled.List,
-                                null,
-                                modifier = Modifier.size(75.dp)
-                            )
+                            }) {
+                                Icon(
+                                    imageVector = Icons.Default.Settings,
+                                    contentDescription = "Settings",
+                                    modifier = Modifier.size(28.dp)
+                                )
+                            }
                         }
-                        val urlOld = intent.getStringExtra("url")
-                        TSoup()
-                        Row(
-                            Modifier.fillMaxWidth(),
-                        ) {
-                            SearchBar(
-                                modifier = Modifier.padding(innerPadding), url = urlOld ?: ""
-                            )
-                        }
-                        Spacer(Modifier.weight(1f))
+                    }
+                ) { innerPadding ->
+                    val urlOld = intent.getStringExtra("url") ?: ""
+                    
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(innerPadding)
+                            .padding(horizontal = 24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        TSoupLogo()
+                        Spacer(modifier = Modifier.height(48.dp))
+                        SearchBar(initialUrl = urlOld)
                     }
                 }
             }
@@ -96,51 +107,58 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-@SuppressLint("NewApi")
 @Composable
-fun SearchBar(modifier: Modifier = Modifier, url: String) {
-    val context = LocalContext.current
-    val  url = remember { mutableStateOf(url) }
-    Column(
-        modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        TextField(value = url.value, onValueChange = { url.value = it }, singleLine = true)
-
-        Spacer(Modifier.height(25.dp))
-        Row(
-            Modifier,
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            TextButton(
-                onClick = {
-                    val intent = Intent(context, SearchResults::class.java)
-                    intent.putExtra("url", url.value)
-                    context.startActivity(intent, null)
-                },
-                Modifier
-                    .background(shape = MaterialTheme.shapes.extraLarge, color = Color.Gray)
-                    .defaultMinSize(155.dp, 45.dp),
-                enabled = url.value.length >= 2
-            ) { Text("Search") }
-        }
-        Spacer(Modifier.height(32.dp))
+fun TSoupLogo() {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            text = "T",
+            color = TorrentGreen,
+            fontSize = 64.sp,
+            fontWeight = FontWeight.Bold
+        )
+        Text(
+            text = "SOUP",
+            fontSize = 64.sp,
+            fontWeight = FontWeight.Light
+        )
     }
 }
 
-
+@SuppressLint("NewApi")
 @Composable
-fun TSoup(modifier: Modifier = Modifier) {
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .height(250.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Center
+fun SearchBar(initialUrl: String) {
+    val context = LocalContext.current
+    val url = remember { mutableStateOf(initialUrl) }
+    
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text("T", color = Green, fontSize = 45.sp)
-        Text(" - SOUP", fontSize = 45.sp)
+        OutlinedTextField(
+            value = url.value,
+            onValueChange = { url.value = it },
+            label = { Text("Search for torrents...") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            shape = MaterialTheme.shapes.medium,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search)
+        )
+
+        Spacer(Modifier.height(24.dp))
+
+        Button(
+            onClick = {
+                val intent = Intent(context, SearchResults::class.java)
+                intent.putExtra("url", url.value)
+                context.startActivity(intent)
+            },
+            modifier = Modifier
+                .fillMaxWidth(0.6f)
+                .height(56.dp),
+            enabled = url.value.trim().length >= 2,
+            shape = MaterialTheme.shapes.large
+        ) {
+            Text("Search", fontSize = 18.sp)
+        }
     }
 }
