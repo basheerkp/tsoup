@@ -56,7 +56,7 @@ class MainActivity : ComponentActivity() {
                         listOf(
                             DomainItem("https://1337x.to", true),
                             DomainItem("https://bitsearch.eu", true),
-                            DomainItem("https://cloudtorrents.com", true),
+                            DomainItem("https://yts.gg", true),
                             DomainItem("https://knaben.eu", true),
                             DomainItem("https://torrentgalaxy.to", true),
                             DomainItem("https://torrentquest.com", true),

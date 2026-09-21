@@ -58,7 +58,7 @@ class SearchResults : ComponentActivity() {
                         .fillMaxSize()
                         .padding(top = 35.dp),
                 ) { innerPadding ->
-                    val domain = "https://cloudtorrents.com"
+                    val domain = "https://yts.gg"
 
                     val config = LocalConfiguration.current
                     val width = config.screenWidthDp

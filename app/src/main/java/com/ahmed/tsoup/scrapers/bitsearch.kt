@@ -15,12 +15,11 @@ fun getBitSearch(url: String): Flow<TorrentVM> = flow {
     try {
         val response = URL(url).readText()
         val results = JSONObject(response).getJSONArray("results")
-
         if (results.length() == 0) {
             emit(TorrentVM("empty", 0f, 0, 0, "2", "", ""))
             return@flow
         }
-        
+
         for (i in 0 until results.length()) {
             val item = results.getJSONObject(i)
             val infohash = item.getString("infohash")

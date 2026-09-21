@@ -9,7 +9,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ahmed.tsoup.scrapers.get1337x
 import com.ahmed.tsoup.scrapers.getBitSearch
-import com.ahmed.tsoup.scrapers.getCloudTorrents
+import com.ahmed.tsoup.scrapers.getYts
 import com.ahmed.tsoup.scrapers.getKnaben
 import com.ahmed.tsoup.scrapers.getTorrentGalaxy
 import com.ahmed.tsoup.scrapers.getTorrentQuest
@@ -57,8 +57,8 @@ class TorrentItems : ViewModel() {
                                 results[index], ::getBitSearch,
                             )
 
-                            "https://cloudtorrents.com" -> processDomain(
-                                results[index], ::getCloudTorrents,
+                            "https://yts.gg" -> processDomain(
+                                results[index], ::getYts,
                             )
 
                             "https://knaben.eu" -> processDomain(
@@ -152,16 +152,15 @@ fun formatURL(domains: List<String>, query: String): List<List<String>> {
                 )
             )
 
-            "https://cloudtorrents.com" -> result.add(
+            "https://yts.gg" -> result.add(
                 listOf(
-                    "$domain/search?offset=0&query=$encodedQuery&ordering=-se",
-                    "$domain/search?offset=50&query=$encodedQuery&ordering=-se"
+                    "$domain/api/v2/list_movies.json?query_term=$encodedQuery&sort_by=seeds&quality=1080p&limit=15"
                 )
             )
 
             "https://bitsearch.eu" -> result.add(
                 listOf(
-                    "$domain/api/v1/search?q=$encodedQuery&sort=seeders&limit=60"
+                    "$domain/api/v1/search?q=$encodedQuery&sort=seeders&limit=40"
                 )
             )
 

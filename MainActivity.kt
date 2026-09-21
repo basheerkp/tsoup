@@ -61,8 +61,8 @@ class MainActivity : ComponentActivity() {
                     saveAddress(
                         listOf(
                             DomainItem("https://1337x.to", true, 20),
-                            DomainItem("https://bitsearch.to", true, 20),
-                            DomainItem("https://cloudtorrents.com", true, 50),
+                            DomainItem("https://bitsearch.eu", true, 20),
+                            DomainItem("https://yts.gg", true, 50),
                             DomainItem("https://knaben.eu", true, 50),
                             DomainItem("https://torrentgalaxy.to", true, 50),
                             DomainItem("https://torrentquest.com", true, 40),
